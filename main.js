@@ -1,11 +1,20 @@
 //Doi tuong validator
 function Validator(options) {
+    function getParent(element, selector) {
+        while (element.parentElement) {
+            if (element.parentElement.matches(selector)) {
+                return element.parentElement
+            }
+            element = element.parentElement
+        }
+    }
+
     var selectorRules = {}
 
     //Ham thuc hien validate
     function validate(inputElement, rule) {
         var errorMessage
-        var errorElement = inputElement.parentElement.querySelector(options.errorSelector)
+        var errorElement = getParent(inputElement, options.formGroupSlector).querySelector(options.errorSelector)
 
         //Lay ra cac rule cua selector
         var rules = selectorRules[rule.selector]
@@ -13,15 +22,22 @@ function Validator(options) {
         //Lap qua tung rule va kiem tra
         //Neu co loi thi dung viec kiem tra f
         for (var i = 0; i < rules.length; ++i) {
-            errorMessage = rules[i](inputElement.value)
+            switch (inputElement.type) {
+                case 'radio':
+                case 'checkbox':
+                    errorMessage = rules[i](inputElement.value)
+                    break;
+                default:
+                    errorMessage = rules[i](inputElement.value)
+            }
             if (errorMessage) break
         }
 
         if (errorMessage) {
-            errorElement.parentElement.classList.add('invalid')
+            getParent(inputElement, options.formGroupSlector).classList.add('invalid')
             errorElement.innerText = errorMessage
         } else {
-            errorElement.parentElement.classList.remove('invalid')
+            getParent(inputElement, options.formGroupSlector).classList.remove('invalid')
             errorElement.innerText = ''
         }
         return !errorMessage
@@ -49,12 +65,13 @@ function Validator(options) {
                 if (typeof options.onSubmit === 'function') {
                     var enableIput = formElement.querySelectorAll('[name]:not([disable])')
                     var formValues = Array.from(enableIput).reduce(function (values, input) {
-                        return (values[input.name] = input.value) && values
+                        values[input.name] = input.value
+                        return values
                     }, {})
                     options.onSubmit(formValues)
                 }
                 //Submit mac dinh 
-                else{
+                else {
                     formElement.submit()
                 }
             }
@@ -71,7 +88,7 @@ function Validator(options) {
         }
 
         var inputElement = formElement.querySelector(rule.selector)
-        var errorElement = inputElement.parentElement.querySelector(options.errorSelector)
+        var errorElement = getParent(inputElement, options.formGroupSlector).querySelector(options.errorSelector)
 
         if (inputElement) {
             //Xu li truong hop blur ra ngoai
@@ -81,7 +98,7 @@ function Validator(options) {
 
             //Xu li moi khi nguoi dung nhap 
             inputElement.oninput = function () {
-                errorElement.parentElement.classList.remove('invalid')
+                getParent(errorElement, options.formGroupSlector).classList.remove('invalid')
                 errorElement.innerText = ''
             }
         }
