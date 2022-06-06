@@ -25,7 +25,9 @@ function Validator(options) {
             switch (inputElement.type) {
                 case 'radio':
                 case 'checkbox':
-                    errorMessage = rules[i](inputElement.value)
+                    errorMessage = rules[i](
+                        formElement.querySelector(rule.selector + ":checked")
+                    )
                     break;
                 default:
                     errorMessage = rules[i](inputElement.value)
@@ -63,9 +65,28 @@ function Validator(options) {
             if (isFormInvalid) {
                 //Submit voi js 
                 if (typeof options.onSubmit === 'function') {
-                    var enableIput = formElement.querySelectorAll('[name]:not([disable])')
-                    var formValues = Array.from(enableIput).reduce(function (values, input) {
-                        values[input.name] = input.value
+                    var enableInput = formElement.querySelectorAll('[name]:not([disable])')
+                    var formValues = Array.from(enableInput).reduce(function (values, input) {
+                        switch (input.type) {
+                            case 'radio':
+                                values[input.name] = formElement.querySelector('input[name="' + input.name + '"]:checked').value
+                                break
+                            case 'checkbox':
+                                if (!input.matches(':checked')) {
+                                    values[input.name] = []
+                                    return values
+                                }
+                                if (!Array.isArray(values[input.name])) {
+                                    values[input.name] = []
+                                }
+                                values[input.name].push(input.value)
+                                break
+                            case 'file':
+                                values[input.name] = input.files
+                                break
+                            default:
+                                values[input.name] = input.value
+                        }
                         return values
                     }, {})
                     options.onSubmit(formValues)
@@ -87,21 +108,22 @@ function Validator(options) {
             selectorRules[rule.selector] = [rule.test]
         }
 
-        var inputElement = formElement.querySelector(rule.selector)
-        var errorElement = getParent(inputElement, options.formGroupSlector).querySelector(options.errorSelector)
+        var inputElements = formElement.querySelectorAll(rule.selector)
+        Array.from(inputElements).forEach(function (inputElement) {
+            var errorElement = getParent(inputElement, options.formGroupSlector).querySelector(options.errorSelector)
+            if (inputElement) {
+                //Xu li truong hop blur ra ngoai
+                inputElement.onblur = function () {
+                    validate(inputElement, rule)
+                }
 
-        if (inputElement) {
-            //Xu li truong hop blur ra ngoai
-            inputElement.onblur = function () {
-                validate(inputElement, rule)
+                //Xu li moi khi nguoi dung nhap 
+                inputElement.oninput = function () {
+                    getParent(errorElement, options.formGroupSlector).classList.remove('invalid')
+                    errorElement.innerText = ''
+                }
             }
-
-            //Xu li moi khi nguoi dung nhap 
-            inputElement.oninput = function () {
-                getParent(errorElement, options.formGroupSlector).classList.remove('invalid')
-                errorElement.innerText = ''
-            }
-        }
+        })
     })
 }
 // Dinh nghia rules
@@ -109,7 +131,7 @@ Validator.isRequired = function (selector) {
     return {
         selector: selector,
         test: function (value) {
-            return value.trim() ? undefined : "Vui lòng nhập trường này"
+            return value ? undefined : "Vui lòng nhập trường này"
         }
     }
 }
